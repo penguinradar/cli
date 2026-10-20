@@ -5,26 +5,26 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readCredential, saveCredential, removeCredential } from './credentials.mjs';
 
-const VERSION = '0.2.1';
+const VERSION = '0.3.0';
 const SKILL_SOURCE = join(dirname(fileURLToPath(import.meta.url)), '..', 'skill');
-const DEFAULT_URL = 'https://instoryview.com/open-api/v1';
-const HELP = `Instoryview ${VERSION} — existing data first; online queries require a budget.
+const DEFAULT_URL = 'https://penguinradar.com/open-api/v1';
+const HELP = `PenguinRadar ${VERSION} — existing data first; online queries require a budget.
 
 Usage:
-  instoryview auth login|status|logout
-  instoryview skill install [--target agents|claude] [--project] [--dir PATH] [--force]
-  instoryview tracking list [--include-archived] [--limit N] [--cursor CURSOR]
-  instoryview account USERNAME
-  instoryview followers USERNAME [--limit N] [--cursor CURSOR]
-  instoryview following USERNAME [--limit N] [--cursor CURSOR]
-  instoryview changes USERNAME [--list followers|following]
+  penguinradar auth login|status|logout
+  penguinradar skill install [--target agents|claude] [--project] [--dir PATH] [--force]
+  penguinradar tracking list [--include-archived] [--limit N] [--cursor CURSOR]
+  penguinradar account USERNAME
+  penguinradar followers USERNAME [--limit N] [--cursor CURSOR]
+  penguinradar following USERNAME [--limit N] [--cursor CURSOR]
+  penguinradar changes USERNAME [--list followers|following]
     [--from YYYY-MM-DD --to YYYY-MM-DD] [--timezone TIMEZONE] [--limit N] [--cursor CURSOR]
-  instoryview account|followers|following USERNAME --live --max-credits N
+  penguinradar account|followers|following USERNAME --live --max-credits N
     [--cursor CURSOR] [--idempotency-key KEY]
 
 All commands accept --json. Reads never start collection or consume new collection credits.
 Online queries return one page; no automatic paging. Recover the same request using its original key.
-Credentials: INSTORYVIEW_API_KEY, or macOS System Keychain via auth login.
+Credentials: PENGUINRADAR_API_KEY, or macOS System Keychain via auth login.
 Exit codes: 0 success, 1 service/network, 2 arguments, 3 auth/permission,
             4 unavailable data, 5 budget or pending result.
 `;
@@ -86,7 +86,7 @@ function baseUrl(value) {
   try {
     url = new URL(value);
   } catch {
-    throw new CliError('INSTORYVIEW_API_URL must be an absolute HTTPS URL.');
+    throw new CliError('PENGUINRADAR_API_URL must be an absolute HTTPS URL.');
   }
   const local = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
   if (
@@ -195,7 +195,7 @@ function apiExitCode(status, code) {
 }
 
 async function rememberQuery(request, url, env) {
-  const root = join(env.XDG_STATE_HOME || join(homedir(), '.local', 'state'), 'instoryview');
+  const root = join(env.XDG_STATE_HOME || join(homedir(), '.local', 'state'), 'penguinradar');
   await mkdir(root, { recursive: true, mode: 0o700 });
   const name = createHash('sha256').update(`${url}\0${request.key}`).digest('hex');
   // Contains recovery parameters only. No credential or server response is stored.
@@ -291,8 +291,8 @@ async function requestApi(request, url, key, io) {
 
 async function hiddenPrompt(io) {
   if (!process.stdin.isTTY || !process.stdin.setRawMode)
-    throw new CliError('Use INSTORYVIEW_API_KEY in a non-interactive terminal.', 3);
-  io.stderr('Create an API Key at https://instoryview.com/developers/keys\nAPI Key (hidden): ');
+    throw new CliError('Use PENGUINRADAR_API_KEY in a non-interactive terminal.', 3);
+  io.stderr('Create an API Key at https://penguinradar.com/developers/keys\nAPI Key (hidden): ');
   const wasRaw = process.stdin.isRaw;
   process.stdin.setRawMode(true);
   process.stdin.resume();
@@ -346,7 +346,7 @@ function render(payload) {
     answer = `@${data?.username ?? 'unknown'}${data?.fullName ? `  ${data.fullName}` : ''}\nFollowers: ${data?.followerCount ?? 'unknown'}; following: ${data?.followingCount ?? 'unknown'}.`;
   answer += `\nSource: ${meta.source ?? 'unknown'}; as of: ${meta.asOf ?? 'see item timestamps'}; credits: ${meta.creditsUsed ?? 'pending'}.`;
   if (meta.coverage)
-    answer += `\nCoverage: ${meta.coverage}. This may not include every account on Instagram's list: it is what Instoryview could observe, and a page is not the Instagram total.`;
+    answer += `\nCoverage: ${meta.coverage}. This may not include every account on Instagram's list: it is what PenguinRadar could observe, and a page is not the Instagram total.`;
   if (meta.warnings?.length) answer += `\nWarnings: ${meta.warnings.join(', ')}.`;
   if (meta.nextCursor) answer += `\nNext cursor: ${meta.nextCursor}`;
   return `${answer}\n`;
@@ -368,7 +368,7 @@ async function installSkill(positionals, flags, io, json) {
   const root = flags.dir
     ? resolve(flags.dir)
     : join(flags.project ? io.cwd : io.home, folder, 'skills');
-  const destination = join(root, 'instoryview');
+  const destination = join(root, 'penguinradar');
   const exists = await stat(destination).then(
     () => true,
     () => false,
@@ -383,14 +383,27 @@ async function installSkill(positionals, flags, io, json) {
   io.stdout(
     json
       ? `${JSON.stringify(result)}\n`
-      : `Installed the Instoryview Skill at ${destination}.\nRestart your assistant if it does not list the Skill yet. The Skill contains no credentials; connect with MCP or run instoryview auth login.\n`,
+      : `Installed the PenguinRadar Skill at ${destination}.\nRestart your assistant if it does not list the Skill yet. The Skill contains no credentials; connect with MCP or run penguinradar auth login.\n`,
   );
   return 0;
 }
 
+/**
+ * The CLI was published as `instoryview` before the PenguinRadar rename (2026-10-17): keep reading
+ * the old variable names, so scripts and secret managers set up for it keep working.
+ */
+function withLegacyEnv(env) {
+  const out = { ...env };
+  for (const name of ['API_KEY', 'API_URL']) {
+    if (out[`PENGUINRADAR_${name}`] === undefined && out[`INSTORYVIEW_${name}`] !== undefined)
+      out[`PENGUINRADAR_${name}`] = out[`INSTORYVIEW_${name}`];
+  }
+  return out;
+}
+
 export async function run(args, options = {}) {
   const io = {
-    env: options.env ?? process.env,
+    env: withLegacyEnv(options.env ?? process.env),
     stdout: options.stdout ?? ((text) => process.stdout.write(text)),
     stderr: options.stderr ?? ((text) => process.stderr.write(text)),
     fetch: options.fetch ?? globalThis.fetch,
@@ -420,7 +433,7 @@ export async function run(args, options = {}) {
       return 0;
     }
     if (positionals[0] === 'skill') return await installSkill(positionals, flags, io, json);
-    const url = baseUrl(io.env.INSTORYVIEW_API_URL ?? DEFAULT_URL);
+    const url = baseUrl(io.env.PENGUINRADAR_API_URL ?? DEFAULT_URL);
     if (positionals[0] === 'auth') {
       if (
         positionals.length !== 2 ||
@@ -432,10 +445,10 @@ export async function run(args, options = {}) {
       if (operation === 'logout') {
         await io.credentials.remove(url);
         const result = {
-          authenticated: Boolean(io.env.INSTORYVIEW_API_KEY),
-          environmentCredential: Boolean(io.env.INSTORYVIEW_API_KEY),
-          message: io.env.INSTORYVIEW_API_KEY
-            ? 'Local Keychain credential removed. Unset INSTORYVIEW_API_KEY to remove the active environment credential.'
+          authenticated: Boolean(io.env.PENGUINRADAR_API_KEY),
+          environmentCredential: Boolean(io.env.PENGUINRADAR_API_KEY),
+          message: io.env.PENGUINRADAR_API_KEY
+            ? 'Local Keychain credential removed. Unset PENGUINRADAR_API_KEY to remove the active environment credential.'
             : 'Local credential removed. Revoke the Key on the website to disable it on other devices.',
         };
         io.stdout(json ? `${JSON.stringify(result)}\n` : `${result.message}\n`);
@@ -445,22 +458,22 @@ export async function run(args, options = {}) {
       if (!key && operation === 'login') {
         if (json || io.platform !== 'darwin')
           throw new CliError(
-            'Set INSTORYVIEW_API_KEY using your environment or secret manager. Interactive Keychain login requires macOS.',
+            'Set PENGUINRADAR_API_KEY using your environment or secret manager. Interactive Keychain login requires macOS.',
             3,
           );
         key = await io.prompt(io);
       }
       if (!key)
         throw new CliError(
-          'No credential found. Run auth login on macOS or set INSTORYVIEW_API_KEY using your secret manager.',
+          'No credential found. Run auth login on macOS or set PENGUINRADAR_API_KEY using your secret manager.',
           3,
         );
       await requestApi({ path: '/tracking?limit=1', method: 'GET' }, url, key, io);
-      if (operation === 'login' && !io.env.INSTORYVIEW_API_KEY) await io.credentials.save(url, key);
+      if (operation === 'login' && !io.env.PENGUINRADAR_API_KEY) await io.credentials.save(url, key);
       const result = {
         authenticated: true,
         apiUrl: url,
-        credentialStorage: io.env.INSTORYVIEW_API_KEY ? 'environment' : 'system_keychain',
+        credentialStorage: io.env.PENGUINRADAR_API_KEY ? 'environment' : 'system_keychain',
       };
       io.stdout(
         json ? `${JSON.stringify(result)}\n` : `Authenticated (${result.credentialStorage}).\n`,
@@ -471,12 +484,12 @@ export async function run(args, options = {}) {
     const request = buildRequest(positionals, flags);
     const key = await io.credentials.read(url, io.env);
     if (!key)
-      throw new CliError('No credential found. Run auth login or set INSTORYVIEW_API_KEY.', 3);
+      throw new CliError('No credential found. Run auth login or set PENGUINRADAR_API_KEY.', 3);
     if (request.method === 'POST') {
       await io.remember(request, url, io.env);
       const command = positionals[0];
       io.stderr(
-        `Online query: max ${request.body.maxCredits} credits; idempotency key: ${request.key}\nRestore: instoryview ${command} ${request.body.username} --live --max-credits ${request.body.maxCredits} --idempotency-key ${request.key}${request.body.cursor ? ` --cursor '${request.body.cursor.replaceAll("'", "'\\''")}'` : ''} --json\n`,
+        `Online query: max ${request.body.maxCredits} credits; idempotency key: ${request.key}\nRestore: penguinradar ${command} ${request.body.username} --live --max-credits ${request.body.maxCredits} --idempotency-key ${request.key}${request.body.cursor ? ` --cursor '${request.body.cursor.replaceAll("'", "'\\''")}'` : ''} --json\n`,
       );
     }
     const payload = await requestApi(request, url, key, io);

@@ -1,10 +1,10 @@
 {
-  "name": "instoryview",
-  "version": "0.2.1",
-  "description": "Official Instoryview CLI: read tracked Instagram follower and following snapshots and detected changes, with budgeted online lookups. JSON output for scripts and AI agents.",
+  "name": "penguinradar",
+  "version": "0.3.0",
+  "description": "Official PenguinRadar CLI: read tracked Instagram follower and following snapshots and detected changes, with budgeted online lookups. JSON output for scripts and AI agents.",
   "type": "module",
   "bin": {
-    "instoryview": "bin/instoryview.mjs"
+    "penguinradar": "bin/penguinradar.mjs"
   },
   "files": [
     "bin",
@@ -20,7 +20,14 @@
     "test": "node --test test/*.test.mjs",
     "typecheck": "node --check src/cli.mjs"
   },
-  "homepage": "https://instoryview.com/docs/cli",
+  "homepage": "https://penguinradar.com/docs/cli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/penguinradar/cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/penguinradar/cli/issues"
+  },
   "license": "MIT",
   "keywords": [
     "instagram",
@@ -28,7 +35,7 @@
     "followers",
     "following",
     "unfollowers",
-    "instoryview",
+    "penguinradar",
     "cli",
     "mcp",
     "agent-skill",
@@ -36,12 +43,5 @@
   ],
   "publishConfig": {
     "access": "public"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/instoryview/cli.git"
-  },
-  "bugs": {
-    "url": "https://github.com/instoryview/cli/issues"
   }
 }

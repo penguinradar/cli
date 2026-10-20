@@ -1,4 +1,4 @@
 interface:
-  display_name: 'Instoryview'
+  display_name: 'PenguinRadar'
   short_description: 'Read Instagram snapshots and tracked changes'
-  default_prompt: 'Use $instoryview to show my tracked accounts and their latest available follower snapshots.'
+  default_prompt: 'Use $penguinradar to show my tracked accounts and their latest available follower snapshots.'

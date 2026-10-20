@@ -40,8 +40,8 @@ async function fixture(t, handler) {
   const outputs = { stdout: '', stderr: '' };
   const options = {
     env: {
-      INSTORYVIEW_API_KEY: 'test-only-secret',
-      INSTORYVIEW_API_URL: `http://127.0.0.1:${server.address().port}/open-api/v1`,
+      PENGUINRADAR_API_KEY: 'test-only-secret',
+      PENGUINRADAR_API_URL: `http://127.0.0.1:${server.address().port}/open-api/v1`,
     },
     stdout: (v) => {
       outputs.stdout += v;
@@ -250,7 +250,7 @@ test('request-in-progress automatic restore is bounded to 60 seconds', async (t)
 
 test('recovery file stores parameters only and protects original body', async (t) => {
   const { requests, options } = await fixture(t, () => ({}));
-  const state = await mkdtemp(join(tmpdir(), 'instoryview-cli-'));
+  const state = await mkdtemp(join(tmpdir(), 'penguinradar-cli-'));
   t.after(() => rm(state, { recursive: true, force: true }));
   options.env.XDG_STATE_HOME = state;
   delete options.remember;
@@ -265,7 +265,7 @@ test('recovery file stores parameters only and protects original body', async (t
     '--json',
   ];
   assert.equal(await run(args, options), 0);
-  const path = join(state, 'instoryview', (await readdir(join(state, 'instoryview')))[0]);
+  const path = join(state, 'penguinradar', (await readdir(join(state, 'penguinradar')))[0]);
   const content = await readFile(path, 'utf8');
   assert(!content.includes('test-only-secret'));
   assert.equal(JSON.parse(content).body.username, 'alice');
@@ -309,12 +309,25 @@ test('skill install copies the bundled Skill, refuses to overwrite, needs no cre
   const outputs = { stdout: '' };
   const options = { env: {}, home, cwd: home, stdout: (v) => (outputs.stdout += v), stderr: () => {} };
   assert.equal(await run(['skill', 'install', '--json'], options), 0);
-  const skill = await readFile(join(home, '.agents/skills/instoryview/SKILL.md'), 'utf8');
-  assert.match(skill, /^---\nname: instoryview/);
-  assert.equal(JSON.parse(outputs.stdout).path, join(home, '.agents/skills/instoryview'));
+  const skill = await readFile(join(home, '.agents/skills/penguinradar/SKILL.md'), 'utf8');
+  assert.match(skill, /^---\nname: penguinradar/);
+  assert.equal(JSON.parse(outputs.stdout).path, join(home, '.agents/skills/penguinradar'));
   assert.equal(await run(['skill', 'install'], options), 2);
   assert.equal(await run(['skill', 'install', '--force'], options), 0);
   assert.equal(await run(['skill', 'install', '--target', 'claude', '--project'], options), 0);
-  await stat(join(home, '.claude/skills/instoryview/agents/openai.yaml'));
+  await stat(join(home, '.claude/skills/penguinradar/agents/openai.yaml'));
   assert.equal(await run(['skill', 'install', '--target', 'bad'], options), 2);
+});
+
+test('variables from before the rename still work (INSTORYVIEW_API_KEY / _API_URL)', async (t) => {
+  const { requests, options } = await fixture(t, () => ({}));
+  const legacy = {
+    ...options,
+    env: {
+      INSTORYVIEW_API_KEY: options.env.PENGUINRADAR_API_KEY,
+      INSTORYVIEW_API_URL: options.env.PENGUINRADAR_API_URL,
+    },
+  };
+  assert.equal(await run(['auth', 'status', '--json'], legacy), 0);
+  assert.equal(requests.at(-1).headers.authorization, 'Bearer test-only-secret');
 });
